@@ -1,20 +1,29 @@
 import os
 from random import randrange
 
-
 turn = 0
 sealOne = False
 sealTwo = False
 sealThee = False
 mon_list = []
+active_monsters = []  
 mythos_list = []
 item_list = []
+active_items = []
 tile_list = []
-active_monsters = []  
 ply_list = []
 active_players = []
 interact_token = []
 search_token = []
+
+def globalLoader():
+    man_ply.loadPly()
+    man_mon.loadMon()
+    man_mythos.loadMyth()
+    man_interaction.loadInteractions()
+    man_search.loadSearch()
+    man_tile.loadTile()
+    man_item.loadItem()
 
 class man_ply:
     def __init__(self,
@@ -25,9 +34,11 @@ class man_ply:
                  ply_max_health,
                  ply_health,
                  ply_injured,
+                 ply_injured_desc,
                  ply_max_sanity,
                  ply_sanity,
                  ply_insane,
+                 ply_insane_desc,
                  ply_str,
                  ply_agl,
                  ply_observation,
@@ -48,9 +59,11 @@ class man_ply:
         self.ply_max_health = ply_max_health
         self.ply_health = ply_health
         self.ply_injured = ply_injured
+        self.ply_injured_desc = ply_injured_desc
         self.ply_max_sanity = ply_max_sanity
         self.ply_sanity = ply_sanity
         self.ply_insane = ply_insane
+        self.ply_insane_desc = ply_insane_desc
         self.ply_str = ply_str
         self.ply_agl = ply_agl
         self.ply_observation = ply_observation
@@ -74,9 +87,11 @@ class man_ply:
                                     x, #Max Health
                                     x, #Health
                                     False,#injured
+                                    str(x), #injured Desc
                                     x, #Max Sanity
                                     x, #Sanity
                                     False, #Insane
+                                    str(x), #Insane Desc
                                     x, #Strength
                                     x, #Agility
                                     x, #Observation
@@ -94,33 +109,34 @@ class man_ply:
     def plyMenu():
         optionSel = 0
         plySel = 0
-        if(len(active_players) != 0):
+        validInput = [1,0]
+        
+        if(len(active_players) == 0):
+            man_ply.plySetup()
+
+        else:
             print("Active Players")
             print("_______________")
             for x in range (0, len(active_players)):
                 print(f"Player " + str(x+1))
                 print(f"Investigator: {active_players[x].ply_name}")
                 print("_______________")
-                print("\n")
-        else:
-            print("Please Setup Players!")
+                        
         print("1) Manage Players")
-        print("2) Setup Players")
-        print("3) Return to Main Menu")
+        print("0) Return to Main Menu")
         print("__________________\n")
-        optionSel = int(input("What are you looking to do?: "))
-        if(optionSel == 1):
-            plySel = int(input("Which Player?: "))
-            plySel -= 1
-            screenClear()
-            man_mon.plyManager()
-    
-        elif(optionSel == 2):
-            man_ply.plySetup()
 
-        elif(optionSel == 3):
-            screenClear()
-            mainMenu()
+        optionSel = int(input("What are you looking to do?: "))
+        optionSel = inputValidator(validInput,optionSel)
+        if(optionSel == 1):
+                plySel = int(input("Which Player?: "))
+                plySel -= 1
+                screenClear()
+                man_ply.plyManager(plySel)
+
+        elif(optionSel == 0):
+                screenClear()
+                mainMenu()
 
     def plySetup():
         numOfPlayers = 0
@@ -132,40 +148,101 @@ class man_ply:
     def investDisplay():
         for i in range (0, len(ply_list)):
             print("---------------------------")
-            print(f"Investigator Number: {ply_list[i].ply_invest_number}")
+            print(f"Investigator Number: {ply_list[i].ply_invest_number + 1}")
             print(f"Investigator Name: {ply_list[i].ply_name}")
             print("---------------------------")
 
     def selectInvestigator(numOfPlayers):
         investSelect = 0
+        investDupe = False
+
         for i in range (0,numOfPlayers):
-            investSelect = int(input(f"Player " + str((i+1)) + " select your Investigator: "))
-            print(investSelect)
-            active_players.append(ply_list[investSelect])
-        screenClear()
+            screenClear()
+            man_ply.investDisplay()
+            
+            if(len(active_players) == 0):
+                print("Setting up first player")
+                investSelect = int(input(f"Player " + str((i+1)) + " select your Investigator: "))
+                investSelect = man_ply.investigatorRangeCheck(investSelect)
+                print(investSelect)   
+            else:
+                print("Setting up everyone else")
+                investSelect = int(input(f"Player " + str((i+1)) + " select your Investigator: "))
+                investSelect = man_ply.investigatorRangeCheck(investSelect)
+                
+                for x in range (0,len(active_players)):
+                    if(active_players[x].ply_number == investSelect - 1):
+                        investDupe = True
+
+                while (investDupe == True):
+                    investSelect = int(input(f"Investigator already chosen, please select another: "))
+                    investSelect = man_ply.investigatorRangeCheck(investSelect)
+
+                    for x in range (0,len(active_players)):
+                        if(active_players[x].ply_number == investSelect - 1):
+                            investDupe = True
+                        else:
+                            investDupe = False 
+
+            active_players.append(ply_list[investSelect - 1])
+            screenClear()
+
         man_ply.plyMenu()
+
+    def investigatorRangeCheck(investChoice):
+        while(investChoice > len(ply_list)):
+            investChoice = int(input(f"Please choose 1 - {len(ply_list)}: "))
+        return investChoice
+
+    def showPly(plySel):
+            print("---------------------------")
+            print(f"Player {ply_list[plySel].ply_invest_number}")
+            print(f"Investigator Name: {ply_list[plySel].ply_name}")
+            print(f"Investigator Title: {ply_list[plySel].ply_title}")
+            print(f"Investigator Health: {ply_list[plySel].ply_health}")
+            if(ply_list[plySel].ply_injured):
+                print("!!!!INJURED!!!!")
+                print(ply_list[plySel].ply_injured_desc)
+            print(f"Investigator Sanity: {ply_list[plySel].ply_sanity}")
+            if(ply_list[plySel].ply_insane):
+                print("!!!!INSANE!!!!")
+                print(ply_list[plySel].ply_insane_desc)
+            print(f"Investigator Strength: {ply_list[plySel].ply_health}")
+            print(f"Investigator Agility: {ply_list[plySel].ply_sanity}")
+            print(f"Investigator Observation: {ply_list[plySel].ply_sanity}")
+            print(f"Investigator Lore: {ply_list[plySel].ply_sanity}")
+            print(f"Investigator Influence: {ply_list[plySel].ply_sanity}")
+            print(f"Investigator Will: {ply_list[plySel].ply_sanity}")
+            print("---------------------------")
 
     def plyManager(plySel):
         optionSel = 0
+        validInput = [1,2,3,4,5,6,9,0]
         print("Player Manager")
         print("---------------")
-        man_ply.showPly() 
+        man_ply.showPly(plySel) 
         print("1) Move Player")
-        print("2) Attack/Spell Check")
-        print("3) Health & Sanity Check")
-        print("4) Stats Check")
-        print("5) Manage Items")
+        print("2) Attack Monster")
+        print("3) Health & Sanity")
+        print("4) Stats")
+        print("5) Ability")
+        print("6) Manage Items")
         print("9) Return to Player Menu")
         print("0) Return to Main Menu")
         print("__________________\n")
 
-        optionSel = int(input("What are you looking to do?: "))   
+        optionSel = int(input("What are you looking to do?: "))
+        optionSel = inputValidator(validInput,optionSel)
     
         if(optionSel == 1):
             active_players[plySel].m_tile = man_ply.plyMove(plySel)
         elif(optionSel == 2):
-            screenClear()
-            man_ply.plyAttacks(plySel)
+            if(len(mon_list) == 0):
+                print ("There is nothing to attack! Please select another option")
+                man_ply.plyManager(plySel)
+            else:
+                screenClear()
+                man_ply.plyAttacks(plySel)
         elif(optionSel == 3):
             screenClear()
             man_ply.plyHealthAndSan(plySel)
@@ -177,8 +254,7 @@ class man_ply:
             man_ply.plyManager(plySel)
         elif(optionSel == 9):
             screenClear()
-            man_ply.plyMenu()
-            
+            man_ply.plyMenu()     
         elif(optionSel == 0):
             screenClear()
             mainMenu()
@@ -194,24 +270,15 @@ class man_ply:
         tile_list[tileSelection].tile_players.append(active_players[0])
 
         for i in reversed(range(tile_list.tile_players + 1)):
-            if(tile_list[active_players[plySel].mon_pos].tile_players[i].mon_tag == active_monsters[plySel].mon_tag):
-                del tile_list[active_players[plySel].mon_pos].tile_players[i]
+            if(tile_list[active_players[plySel].ply_pos].tile_players[i].ply_number == active_monsters[plySel].ply_number):
+                del tile_list[active_players[plySel].ply_pos].tile_players[i]
 
         return man_ply.plyManager(plySel)
-
-    def plyAttack(plySel):
-        plyChoice = 0
-        print("1) Melee Attack")
-        print("2) Unarmed Attack")
-        print("3) Range Attack")
-        print("4) Spell Attack")
-        print("0) Return to Player Menu")
-        plyChoice = int(input("Please Select an attack: "))
-        
-        
            
     def plyHealthAndSan(plySel):
-        plyChoice = 0
+        optionSel = 0
+        atMaxHealth = False
+        atMaxSanity = False
         print("---------------------------")
         print(f"Player {ply_list[plySel].ply_invest_number}")
         print(f"Investigator Name: {ply_list[plySel].ply_name}")
@@ -228,18 +295,18 @@ class man_ply:
         print("4) Decrease Sanity")
         print("0) Return to Player Menu")
 
-        plyChoice = int(input("Please enter your choice: "))
+        optionSel = int(input("Please enter your choice: "))
 
-        if(plyChoice == 1):
+        if(optionSel == 1):
             if(active_players[plySel].ply_health >= active_players[plySel].ply_max_health):
                 print("Already At Max Health!")
-                plyChoice = int(input("Please another choice: "))
+                optionSel = int(input("Please another choice: "))
             else:
                 active_players[plySel].ply_health += 1
                 screenClear()
                 man_ply.plyHealthAndSan(plySel)
 
-        if(plyChoice == 2):
+        if(optionSel == 2):
             if(active_players[plySel].ply_health == 0 and active_players[plySel].ply_injured == False):
                 print("Player is Injured!!")
                 active_players[plySel].ply_injured = True
@@ -248,16 +315,16 @@ class man_ply:
             if(active_players[plySel].ply_health == 0 and active_players[plySel].ply_injured == True):
                 print("!!Game Over!!")
 
-        if(plyChoice == 3):
+        if(optionSel == 3):
             if(active_players[plySel].ply_sanity >= active_players[plySel].ply_max_sanity):
                 print("Already At Max Sanity!")
-                plyChoice = int(input("Please another choice: "))
+                optionSel = int(input("Please another choice: "))
             else:
                 active_players[plySel].ply_sanity += 1
                 screenClear()
                 man_ply.plyHealthAndSan(plySel)
         
-        if(plyChoice == 4):
+        if(optionSel == 4):
             if(active_players[plySel].ply_sanity == 0 and active_players[plySel].ply_insane == False):
                 print("Player is Injured!!")
                 active_players[plySel].ply_insane = True
@@ -266,30 +333,26 @@ class man_ply:
             if(active_players[plySel].ply_sanity == 0 and active_players[plySel].ply_insane == True):
                 print("!!Game Over!!")
 
-        if(plyChoice == 0):
+        if(optionSel == 0):
             screenClear()
             man_ply.plyManager(plySel)
 
     def plyStats(plySel):
-        plyChoice = 0
+        optionSel = 0
         abilityChoice = 0
-        print("---------------------------")
-        print(f"Player {ply_list[plySel].ply_invest_number}")
-        print(f"Investigator Name: {ply_list[plySel].ply_name}")
-        print(f"Investigator Strength: {ply_list[plySel].ply_health}")
-        print(f"Investigator Agility: {ply_list[plySel].ply_sanity}")
-        print(f"Investigator Observation: {ply_list[plySel].ply_sanity}")
-        print(f"Investigator Lore: {ply_list[plySel].ply_sanity}")
-        print(f"Investigator Influence: {ply_list[plySel].ply_sanity}")
-        print(f"Investigator Will: {ply_list[plySel].ply_sanity}")
-        print("---------------------------")
+        validInput = [1,2,0]
+        validAbilInput = [1,2,3,4,5,6,0]
+        for x in range(0,len(validAbilInput)):
+            print(validAbilInput[x])
 
+        man_ply.showPly(plySel)
         print("1) Increase a Stat")
         print("2) Decrease a Stat")
         print("0) Return to Player Menu")
-        plyChoice = int(input("Please enter your choice: "))
+        optionSel = int(input("Please enter your choice: "))
+        optionSel = inputValidator(validInput,optionSel)
 
-        if(plyChoice == 1):
+        if(optionSel == 1):
             screenClear()
             print("1) Strength")
             print("2) Agility")
@@ -299,7 +362,8 @@ class man_ply:
             print("6) Will")     
             print("0) Cancel")
             abilityChoice = int(input("Please Select an Abiliy to Increase: "))
-            
+            abilityChoice = inputValidator(validAbilInput,abilityChoice)
+
             if(abilityChoice == 1):
                 active_players[plySel].ply_str += 1
             elif(abilityChoice == 2):
@@ -316,7 +380,7 @@ class man_ply:
                 screenClear()
                 man_ply.plyStats(plySel)
 
-        if(plyChoice == 2):
+        if(optionSel == 2):
             screenClear()
             print("1) Strength")
             print("1) Agility")
@@ -325,7 +389,8 @@ class man_ply:
             print("1) Influence")
             print("1) Will")
             print("0) Cancel")
-            abilityChoice = int(input("Please Select an Abiliy to Decrease: "))
+            abilityChoice = int(input("Please Select an Abiliy to Increase: "))
+            abilityChoice = inputValidator(validAbilInput,abilityChoice)
             
             if(abilityChoice == 1):
                 active_players[plySel].ply_str -= 1
@@ -343,7 +408,7 @@ class man_ply:
                 screenClear()
                 man_ply.plyStats(plySel)
            
-        if(plyChoice == 0):
+        if(optionSel == 0):
             screenClear()
             man_ply.plyManager(plySel)
 
@@ -353,12 +418,14 @@ class man_ply:
         
     def plyAttacks(plySel):
         attackChoice = 0
+        validInput = [1,2,3,4,0]
         print("1) Melee Attack")
         print("2) Unarmed Attack")
         print("3) Ranged Attack")
         print("4) Spell Attack")
         print("0) Return to Player Menu")
         attackChoice = int(input("Please an Attack Type: "))
+        attackChoice = inputValidator(validInput,attackChoice)
         
         if(attackChoice == 1):
             man_ply.plyMelee(plySel)
@@ -374,6 +441,8 @@ class man_ply:
 
     def plyMelee(plySel):
         sucessChoice = 0
+        validSucess = [1,2]
+        validMonChoice = man_mon.totalMons()
         attackNum = 0
         monSel = 0
         monsterDmg = 0
@@ -386,6 +455,7 @@ class man_ply:
         print("Did the attack land?: ")
         print("\n")
         sucessChoice = int(input("1) Yes    2)No  :  "))
+        sucessChoice = inputValidator(validSucess,sucessChoice)
         
         if(sucessChoice == 1):
             print("Active Monsters")
@@ -394,18 +464,22 @@ class man_ply:
                 print(f"{active_monsters[x].m_name}" + " " + f"{x+1}")
             print("_______________")
             monSel = int(input("Targeting which monster?: "))
+            monSel = inputValidator(validMonChoice,monSel)
+            
             print("_______________")
             monsterDmg = int(input("How much damage is monster taking?: " ))
             active_monsters[monSel].m_hp -= monsterDmg
             man_mon.monHealthCheck(monSel)
             screenClear()
             man_ply.plyAttacks(plySel)
+
         elif(sucessChoice == 2):
             screenClear()
             man_ply.plyAttacks(plySel)            
               
     def plyUnarmed(plySel):
         sucessChoice = 0
+        validSucess = [1,2]
         attackNum = 0
         monSel = 0
         monsterDmg = 0
@@ -418,6 +492,7 @@ class man_ply:
         print("Did the attack land?: ")
         print("\n")
         sucessChoice = int(input("1) Yes    2)No  :  "))
+        sucessChoice = inputValidator(sucessChoice,validSucess)
         
         if(sucessChoice == 1):
             print("Active Monsters")
@@ -438,18 +513,22 @@ class man_ply:
 
     def plyRanged(plySel):
         sucessChoice = 0
+        validSucess = [1,2]
+        validMonChoice = []
         attackNum = 0
         monSel = 0
         monsterDmg = 0
+
+        for i in range (0,len(mon_list)):
+            validMonChoice.append(i)
         
         attackNum = randrange(0,len(active_players[plySel].ply_attack_range))
         print(active_players[plySel].ply_attack_range[attackNum])
         print("\n")
-        
-
         print("Did the attack land?: ")
         print("\n")
         sucessChoice = int(input("1) Yes    2)No  :  "))
+        sucessChoice = inputValidator(sucessChoice,validSucess)
         
         if(sucessChoice == 1):
             print("Active Monsters")
@@ -471,6 +550,7 @@ class man_ply:
             
     def plySpell(plySel):
         sucessChoice = 0
+        validSucess = [1,2]
         attackNum = 0
         monSel = 0
         monsterDmg = 0
@@ -483,6 +563,7 @@ class man_ply:
         print("Did the attack land?: ")
         print("\n")
         sucessChoice = int(input("1) Yes    2)No  :  "))
+        sucessChoice = inputValidator(sucessChoice,validSucess)
         
         if(sucessChoice == 1):
             print("Active Monsters")
@@ -501,9 +582,13 @@ class man_ply:
             screenClear()
             man_ply.plyAttacks(plySel)
 
+    def validPlayers():
+        totalPlayers = []
+        for i in range(0,len(active_players)):
+            totalPlayers.append(i)
+        return totalPlayers
 
 class man_mon:
-    
     def __init__(self,
                  m_tag, #tag == monster number (1 - whatever)
                  m_name,
@@ -547,6 +632,7 @@ class man_mon:
     
     def loadattacks():
         print()
+
     def loadHorror():
         print()
 
@@ -713,16 +799,120 @@ class man_mon:
             del (active_monsters[monsterSelect])
         screenClear()
         man_ply.plyAttacks(monsterSelect)
-        
 
+    def totalMons():
+        totalMon = []
+        if(len(mon_list) != 0):
+            for i in range (0,len(mon_list)):
+                totalMon.append(i)
+            return totalMon
+        else:
+            return 0
+       
 class man_item:
     def __init__(self, i_number,
+                       i_name,
                        i_type,
-                       i_desc):
+                       i_cat,
+                       i_desc,
+                       i_curr_owner):
         self.i_number = i_number
+        self.i_name = i_name
         self.i_type = i_type
+        self.i_cat = i_cat
         self.i_desc = i_desc
+        self.i_curr_owner = i_curr_owner
 
+    def loadItem():
+        for i in range(0,40):
+            item_list.append(man_item(i,
+                                      str(i),
+                                      str(i),
+                                      str(i),
+                                      str(i),
+                                      str(i)))
+
+    def allItems():
+        for i in range (0,len(item_list)):
+            print(f"Item Number: {item_list[i].i_number + 1}")
+            print(f"Item Name: {item_list[i].i_name}")
+            print(f"Common or Unique?: {item_list[i].i_type}")
+            print(f"Item Category: {item_list[i].i_cat}")
+            print(f"Item Number: {item_list[i].i_desc}")
+
+    def activeItems():
+        for i in range(0, len(active_items)):
+            print(f"Item Number: {active_items[i].i_number + 1}")
+            print(f"Item Name: {active_items[i].i_name}")
+            print(f"Common or Unique?: {active_items[i].i_type}")
+            print(f"Item Category: {active_items[i].i_cat}")
+            print(f"Item Number: {active_items[i].i_desc}")
+
+    def itemMenu():
+        optionSel = 0
+        validInputs = [1,2,3,4,5,0]
+
+        print("*****************************")
+        print(f"Item Menu")
+        print("*****************************")
+        print("1) See all Items")
+        print("2) See Active Items")
+        print("3) Assign an Item")
+        print("4) Check Items on Tiles")
+        print("5) Check Items on Search Tokens")
+        print("0) Return to Main Menu")
+
+        optionSel = int(input("What would you like to do?: "))
+        optionSel = inputValidator(validInputs,optionSel)
+
+        if(optionSel == 1):
+            man_item.allItems()
+            endCom = input("")
+            screenClear()
+            man_item.itemMenu()
+
+        elif(optionSel == 2):
+            man_item.activeItems()
+            endCom = input("")
+            screenClear()
+            man_item.itemMenu()
+        
+        elif(optionSel == 3):
+            screenClear()
+            man_item.playerAssign()
+
+    def playerAssign():
+        playerSel = 0
+        itemSel = 0
+        validItems = man_item.validItems()
+        validPlayers = man_ply.validPlayers()
+
+        man_item.activeItems()
+
+        itemSel = int(input("Please pick an item to assign: "))
+        itemSel = inputValidator(validItems,itemSel)
+        screenClear()
+
+        for i in range (0,len(active_players)): 
+            print(f"Player {active_players[i] + 1}")
+            print(f"Investigator: {active_players[i].ply_name}")
+
+        playerSel = int(input(f"Which player is getting the {active_items[itemSel].i_name}?: "))
+        playerSel = inputValidator(validPlayers,playerSel)
+
+        active_players[playerSel].items.append(active_items[itemSel])
+        print(f"Player {active_players[i] + 1} now owns the {active_items[itemSel].i_name}")
+        
+        endCom = input("")
+        screenClear()
+        man_item.itemMenu()
+
+    def validItems():
+        itemList = [] 
+        for i in range(0,len(active_items)):
+            itemList.append(i)     
+        return itemList
+ 
 class man_mythos:
     def __init__(self, 
                  myth_tag, 
@@ -960,6 +1150,7 @@ class man_search:
     def __init__(self,
                  search_tag, 
                  search_diff,
+                 search_items_present,
                  search_item,
                  search_effect,
                  search_complete):
@@ -971,22 +1162,17 @@ class man_search:
 
     def loadSearch():
         for x in range(0,16):
-            search_token.append(man_search("Tag: " + str(x),
-                                   "Difficulty: " + str(x), 
-                                   "Item: " + str(x),
-                                   "Effect: " + str(x),
-                                   "Complete: " + str(x)))
-
-def globalLoader():
-    man_ply.loadPly()
-    man_mon.loadMon()
-    man_mythos.loadMyth()
-    man_interaction.loadInteractions()
-    man_search.loadSearch()
-    man_tile.loadTile()
+            search_token.append(man_search(x,
+                                           x,
+                                           False,
+                                           [],
+                                           str(x),
+                                           False))
 
 def mainMenu():
     turndisplay()
+    validInput = [1,2,3,4,5,6,9,0]
+
     print("1) Manage Monsters")
     print("2) Manage Players")
     print("3) Manage Map")
@@ -997,6 +1183,7 @@ def mainMenu():
     print("0) Save and Exit")
 
     verC = int(input("Please select what you want?: "))
+    verC = inputValidator(validInput, verC)
 
     if(verC == 1):
         screenClear()
@@ -1007,17 +1194,15 @@ def mainMenu():
     elif(verC == 3):
         screenClear()
         man_tile.mapMenu()
+    elif(verC == 4):
+        screenClear()
+        man_item.itemMenu()
     elif(verC == 6):
         screenClear()
         endTurn()
-    elif(verC == 4):
-        print("TBD")
-        mainMenu()
-
     elif (verC == 0):
         screenClear()
         exit()  
-
     else:
         screenClear()    
         exit() 
@@ -1055,36 +1240,50 @@ def sealCheck():
     global sealOne
     global sealTwo
     global sealThee
+    validInput = [1,2]
     dmChoice = 0    
      
     if(sealOne == False and sealTwo == False and sealThee == False):
         dmChoice = 0
         print("Has the First Seal been broken?")
         dmChoice = int(input("1) Yes    2)  No : "))
+        dmChoice = inputValidator(validInput,dmChoice)
+        
         if(dmChoice == 1):
             sealOne = True
-        dmChoice = 0
         screenClear()
 
     if (sealOne == True and sealTwo == False and sealThee == False):
-        dmChoice = 0
         print("Has the Second Seal been broken?")
         dmChoice = int(input("1) Yes    2)  No : "))
+        dmChoice = inputValidator(validInput,dmChoice)
         
         if(dmChoice == 1):
-            sealTwo = True
-            
+            sealTwo = True      
         screenClear()
 
     if (sealOne == True and sealTwo == True and sealThee == False):
         print("Has the Third Seal been broken?")
         dmChoice = int(input("1) Yes    2)  No : "))
+        dmChoice = inputValidator(validInput,dmChoice)
         
+
         if(dmChoice == 1):
             sealThee = True
             print("!!!!!!!GAME OVER!!!!!!!!!")
             exit()
-            
+
+def inputValidator(validInputs, menuSelect):
+    correctInput = False
+    
+    while(correctInput == False):
+        for x in validInputs:
+            if(menuSelect == x):
+                correctInput = True
+        if(correctInput == False):
+            menuSelect = int(input("Please enter a valid choice: "))
+    return menuSelect
+       
 globalLoader()
 screenClear()
 mainMenu()
